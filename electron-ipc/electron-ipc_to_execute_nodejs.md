@@ -8,6 +8,10 @@
 
 ## 작동 순서
 
+renderer.js 는 "브라우저 자바스크립트" 임.
+
+-> renderer.js 는 nodejs api 는 사용할 수 없지만, electron API는 사용할 수 있음.
+
 1. preload.js 에서 electronAPI 를 하나 새로 만든다음, 이 API 를 call 하면 ipc 채널로 "ipc 채널명"을 ipc 메세지로 보내도록 한다.
 
 2. main.js 에서 "ipc 채널명" 이벤트 리스너를 등록. 이벤트 리스너로 등록된 nodejs 함수를 실행할 수 있도록 한다.
