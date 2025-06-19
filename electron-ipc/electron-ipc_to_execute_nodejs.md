@@ -20,30 +20,153 @@ renderer.js 는 "브라우저 자바스크립트" 임.
 
 > renderer.js -> electronAPI -> preload.js -> ipc -> main.js -> eventlistener
 
----
+
 # 코드 작성
 
-1. preload.js
+1. `preload.js`
 
-렌더러에서 사용할 수 있도록 안전한 API를 노출
+렌더러에서 사용할 수 있도록 API를 노출
+
+```javascript
+// See the Electron documentation for details on how to use preload scripts:
+// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  openUrl: (url, title) => ipcRenderer.send('open-url', url, title)
+  openUrl: (url) => ipcRenderer.send('open-url', url)
 });
+```
 
----
-
-2. main.js
+2. `main.js`
 
 ipc 채널에 대한 이벤트 리스너 등록
 
-ipcMain.on('open-url', handleOpenUrl);  // 📌 이게 main 프로세스에서 동작할 로직 연결
+```javascript
+...
+// Handle creating/removing shortcuts on Windows when installing/uninstalling.
+if (require('electron-squirrel-startup')) {
+  app.quit();
+}
+
+const createWindow = () => {
+  // Create the browser window.
+  const mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: {
+      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+    },
+  });
+
+  // and load the index.html of the app.
+  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+
+  // Open the DevTools.
+  mainWindow.webContents.openDevTools();
+};
+
+const { ipcMain } = require('electron'); // ✅ 이 줄을 추가
+
+const handleOpenUrl = require('./main-api/open-url'); // ✅ 이 줄을 추가
+ipcMain.on('open-url', handleOpenUrl); // ✅ 이 줄을 추가
+
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+app.whenReady().then(() => {
+  createWindow();
+
+  // On OS X it's common to re-create a window in the app when the
+  // dock icon is clicked and there are no other windows open.
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+...
+```
+
+3. `main-api/open-url.js`
+
+```javascript
+const { BrowserWindow } = require('electron');
+
+module.exports = (event, url) => {
+  const win = new BrowserWindow({
+    width: 1024,
+    height: 768,
+    webPreferences: {
+      contextIsolation: true,
+    }
+  });
+
+  win.loadURL(url);
+};
+```
 
 
----
+3. `renderer.js`
 
-3. renderer.js
+html 의 버튼을 클릭 시 electronAPI 를 call 하도록 구현
 
-버튼 클릭 등으로 사용자 이벤트 발생 시 해당 채널 호출
+```javascript
+/**
+ * This file will automatically be loaded by webpack and run in the "renderer" context.
+ * To learn more about the differences between the "main" and the "renderer" context in
+ * Electron, visit:
+ *
+ * https://electronjs.org/docs/tutorial/process-model
+ *
+ * By default, Node.js integration in this file is disabled. When enabling Node.js integration
+ * in a renderer process, please be aware of potential security implications. You can read
+ * more about security risks here:
+ *
+ * https://electronjs.org/docs/tutorial/security
+ *
+ * To enable Node.js integration in this file, open up `main.js` and enable the `nodeIntegration`
+ * flag:
+ *
+ * ```
+ *  // Create the browser window.
+ *  mainWindow = new BrowserWindow({
+ *    width: 800,
+ *    height: 600,
+ *    webPreferences: {
+ *      nodeIntegration: true
+ *    }
+ *  });
+ * ```
+ */
 
-window.electronAPI.openUrl('https://naver.com', '네이버');
+import './index.css';
+
+console.log('👋 This message is being logged by "renderer.js", included via webpack');
+
+const openBtn = document.getElementById('open-naver');
+
+if (openBtn) {
+  openBtn.addEventListener('click', () => {
+    window.electronAPI?.openUrl?.('https://www.naver.com');
+  });
+}
+```
+
+4. `index.html` 에 버튼 추가
+
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hello Electron!</title>
+
+  </head>
+  <body>
+    <button id="open-naver">네이버 접속하기</button>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
+```
