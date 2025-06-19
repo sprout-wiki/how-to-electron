@@ -46,4 +46,4 @@ ipcMain.on('open-url', handleOpenUrl);  // 📌 이게 main 프로세스에서 �
 
 버튼 클릭 등으로 사용자 이벤트 발생 시 해당 채널 호출
 
-window.electronAPI.openUrl('https://ticketlink.co.kr', '티켓링크');
+window.electronAPI.openUrl('https://naver.com', '네이버');
