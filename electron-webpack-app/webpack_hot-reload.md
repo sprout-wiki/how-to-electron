@@ -1,0 +1,1 @@
+### 참고 : electron+webpack 에서 webpack hot realod는 renderer.js 에만 적용되고, main.js 수정사항에는 적용되지 않는다.
